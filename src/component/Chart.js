@@ -76,7 +76,7 @@ const Chart = () => {
           borderColor: "#00FF00",
           label: {
             borderColor: "#00FF00",
-            offsetX: 150, 
+            offsetX: 250, 
             style: {
               color: "#fff",
               background: "#00FF00",
