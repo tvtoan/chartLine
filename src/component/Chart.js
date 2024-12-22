@@ -39,7 +39,7 @@ const Chart = () => {
       return () => clearTimeout(delayReset);
     }
   },[countdown])
-  console.log(countdown)
+  
   
  
   const [options, setOptions] = useState({
@@ -157,7 +157,7 @@ const Chart = () => {
           setTimeout(() => {
             setFirstTime(endTime);
             setEndTime(currentTime + initTime * 1000);
-            setOldPriceValue(lastValue);
+            setOldPriceValue(newValue);
           }, 1000); // Delay of 1 seconds
         }
 
@@ -169,7 +169,7 @@ const Chart = () => {
             data: [
               ...prevSeries[0].data,
               { x: currentTime, y: newValue },
-            ].slice(-25),
+            ].slice(-35),
           },
         ];
       });
