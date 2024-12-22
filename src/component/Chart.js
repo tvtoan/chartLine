@@ -3,7 +3,7 @@ import ReactApexChart from "react-apexcharts";
 
 const Chart = () => {
   const initialPrice = 3430.96;
-
+  const initTime = 30;
   const [series, setSeries] = useState([
     {
       name: "Price",
@@ -12,14 +12,36 @@ const Chart = () => {
   ]);
 
   const [currentPrice, setCurrentPrice] = useState(initialPrice);
-  const [horizontalLineValue] = useState(3435); // fixed horizontal value
-  const [oldPriceValue] = useState(3432); // old price
+  const [oldPriceValue, setOldPriceValue] = useState(initialPrice);
   const [priceTrend, setPriceTrend] = useState("");
 
-  const [endTime] = useState(new Date().getTime() + 40 * 1000); // time running
-  const [delayAfterEnd] = useState(2200); // Delay 2 seconds
-  const [isRunning, setIsRunning] = useState(true); // 
+  const [endTime, setEndTime] = useState(
+    new Date().getTime() + initTime * 1000
+  );
+  const [firstTime, setFirstTime] = useState(series[0]?.data[0]?.x);
+  const [countdown, setCountdown] = useState(
+    Math.ceil((endTime - new Date().getTime()) / 1000)
+  );
 
+  useEffect(() => {
+    if(countdown > 0) {
+      const timeCountDown = setInterval(() => {
+        setCountdown((prev) => prev - 1 )
+      },1000);
+      return () => clearInterval(timeCountDown);
+    }
+    else {
+
+      const delayReset = setTimeout(() => {
+        setEndTime(new Date().getTime() + initTime * 1000); 
+        setCountdown(initTime); // Reset về 30 giây
+      }, 2000);
+      return () => clearTimeout(delayReset);
+    }
+  },[countdown])
+  console.log(countdown)
+  
+ 
   const [options, setOptions] = useState({
     chart: {
       type: "line",
@@ -27,7 +49,7 @@ const Chart = () => {
         enabled: true,
         easing: "easeinout",
         dynamicAnimation: {
-          speed: 3000,
+          speed: 2000, // slow animation
         },
       },
       toolbar: {
@@ -63,7 +85,7 @@ const Chart = () => {
     grid: {
       borderColor: "#404040",
       padding: {
-        right: 50, //padding right 50px
+        right: 50,
       },
     },
     theme: {
@@ -73,42 +95,42 @@ const Chart = () => {
       xaxis: [
         {
           x: endTime,
-          borderColor: "#00FF00",
+          borderColor: "#fd853a",
           label: {
             borderColor: "#00FF00",
-            offsetX: 250, 
             style: {
               color: "#fff",
               background: "#00FF00",
             },
             text: "End",
           },
+          strokeDashArray: 5,
+        },
+        {
+          x: firstTime,
+          borderColor: "#fd853a",
+          label: {
+            borderColor: "#00FF00",
+            style: {
+              color: "#fff",
+              background: "#00FF00",
+            },
+            text: "Current",
+          },
+          strokeDashArray: 5,
         },
       ],
       yaxis: [
         {
-          y: horizontalLineValue,
-          borderColor: "#FF0000",
-          label: {
-            borderColor: "#FF0000",
-            style: {
-              color: "#fff",
-              background: "#FF0000",
-            },
-            text: `Threshold: $${horizontalLineValue}`,
-          },
-          strokeDashArray: 5,
-        },
-        {
           y: oldPriceValue,
-          borderColor: "#00BFFF",
+          borderColor: "#fd853a",
           label: {
             borderColor: "#00BFFF",
             style: {
               color: "#fff",
               background: "#00BFFF",
             },
-            text: `Old Price: $${oldPriceValue}`,
+            text: `Current: $${oldPriceValue}`,
           },
           strokeDashArray: 5,
         },
@@ -117,46 +139,100 @@ const Chart = () => {
   });
 
   const generateRandomValue = (prevValue) => {
-    const change = Math.random() * 5;
+    const change = Math.random() * 2;
     const direction = Math.random() > 0.5 ? 1 : -1;
     return parseFloat((prevValue + direction * change).toFixed(2));
   };
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const updateData = () => {
       const currentTime = new Date().getTime();
 
-      // logic stop
-      if (currentTime < endTime + delayAfterEnd) {
-        setSeries((prevSeries) => {
-          const lastValue =
-            prevSeries[0].data[prevSeries[0].data.length - 1].y;
-          const newValue = generateRandomValue(lastValue);
+      
+      setSeries((prevSeries) => {
+        const lastValue = prevSeries[0].data[prevSeries[0].data.length - 1].y;
+        const newValue = generateRandomValue(lastValue);
 
-          setCurrentPrice(newValue);
+        if (currentTime >= endTime) {
+          setTimeout(() => {
+            setFirstTime(endTime);
+            setEndTime(currentTime + initTime * 1000);
+            setOldPriceValue(lastValue);
+          }, 1000); // Delay of 1 seconds
+        }
 
-          return [
-            {
-              ...prevSeries[0],
-              data: [
-                ...prevSeries[0].data,
-                { x: currentTime, y: newValue },
-              ].slice(-15),
-            },
-          ];
-        });
-      } else {
-        // Stop program
-        setIsRunning(false);
-        clearInterval(interval);
-      }
-    }, 3000); // update
+        setCurrentPrice(newValue);
 
+        return [
+          {
+            ...prevSeries[0],
+            data: [
+              ...prevSeries[0].data,
+              { x: currentTime, y: newValue },
+            ].slice(-25),
+          },
+        ];
+      });
+    };
+
+    const interval = setInterval(updateData, 2000);
     return () => clearInterval(interval);
-  }, [endTime, delayAfterEnd]);
+  }, [endTime]);
 
   useEffect(() => {
-    const difference = currentPrice - horizontalLineValue;
+    setOptions((prevOptions) => ({
+      ...prevOptions,
+      annotations: {
+        ...prevOptions.annotations,
+        xaxis: [
+          {
+            x: endTime,
+            borderColor: "#fd853a",
+            label: {
+              borderColor: "#00FF00",
+              style: {
+                color: "#fff",
+                background: "#00FF00",
+              },
+              text: "End",
+            },
+            strokeDashArray: 5,
+          },
+          {
+            x: firstTime,
+            borderColor: "#fd853a",
+            label: {
+              borderColor: "#00FF00",
+              style: {
+                color: "#fff",
+                background: "#00FF00",
+              },
+              text: "Current",
+            },
+            strokeDashArray: 5,
+          },
+        ],
+        yaxis: [
+          {
+            y: oldPriceValue,
+            borderColor: "#fd853a",
+            label: {
+              borderColor: "#00BFFF",
+              style: {
+                color: "#fff",
+                background: "#00BFFF",
+              },
+              text: `Current: $${oldPriceValue}`,
+            },
+            strokeDashArray: 5,
+          },
+        ],
+      },
+    }));
+  }, [endTime, firstTime, oldPriceValue]);
+
+  useEffect(() => {
+    const difference = currentPrice - oldPriceValue;
     if (difference > 0) {
       setPriceTrend(`Increase ${difference.toFixed(2)} $`);
     } else if (difference < 0) {
@@ -164,7 +240,7 @@ const Chart = () => {
     } else {
       setPriceTrend("Balance");
     }
-  }, [currentPrice, horizontalLineValue]);
+  }, [currentPrice, oldPriceValue]);
 
   return (
     <div
@@ -172,25 +248,24 @@ const Chart = () => {
         width: "80%",
         margin: "0 auto",
         textAlign: "center",
-        paddingRight: "150px", // Tạo khoảng cách 150px ở bên phải
       }}
     >
       <h2 style={{ color: "#00FF00", fontSize: "36px" }}>
         ${currentPrice.toFixed(2)}
       </h2>
+      {countdown ? 
+
+      <h3 style={{color:'green'}}>{countdown} seconds</h3> : <h3 style={{color: 'red'}}>Time Out</h3>
+      }
       <h3 style={{ color: priceTrend.includes("Increase") ? "green" : "red" }}>
         {priceTrend}
       </h3>
-      {isRunning ? (
-        <ReactApexChart
-          options={options}
-          series={series}
-          type="line"
-          height={550}
-        />
-      ) : (
-        <h3 style={{ color: "orange" }}>Stopped at End Time</h3>
-      )}
+      <ReactApexChart
+        options={options}
+        series={series}
+        type="line"
+        height={550}
+      />
     </div>
   );
 };
